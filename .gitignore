@@ -1,1 +1,6 @@
 venv
+
+data/
+
+*.pt
+*.pth
