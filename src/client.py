@@ -1,8 +1,8 @@
 import flwr as fl
 import numpy as np
 import torch
-from dataset import load_cifar10
-from model import baseline_cnn
+from dataset import load_and_split_cifar10
+from model import Net
 
 #backdoor client class
 class BackdoorClient(fl.client.NumPyClient):
@@ -50,8 +50,8 @@ class BackdoorClient(fl.client.NumPyClient):
         self.model.load_state_dict(state_dict, strict=True)
 
 #load client data and model
-trainloader = load_cifar10()
-model = baseline_cnn()
+trainloader = load_and_split_cifar10()
+model = Net()
 
 #initialize malicious client
 client = BackdoorClient(trainloader, model)
