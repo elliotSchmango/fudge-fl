@@ -1,13 +1,16 @@
 import flwr as fl
 import numpy as np
 import torch
+from model import Net
+from dataset import load_and_split_cifar10
+import audit
 
 #aggregation strategy: trimmed mean
 def get_robust_strategy():
     strategy = fl.server.strategy.FedTrimmedAvg(
         fraction_fit=1.0,
         fraction_evaluate=0.5,
-        min_fit_clients=10, #all 10 clients
+        min_fit_clients=10,
         min_available_clients=10,
         beta=0.1
     )
@@ -66,6 +69,26 @@ def main():
         config=fl.server.ServerConfig(num_rounds=5),
         strategy=strategy,
     )
+
+    #load final aggregated model and unlearning data
+    model = Net() #load final global weights from server into this model here
+    
+    #isolate malicious client data for unlearning
+    datasets = load_and_split_cifar10()
+    unlearn_dataloader = torch.utils.data.DataLoader(datasets, batch_size=32)
+
+    #run unlearning loop
+    perturbed_weights = run_unlearning_loop(model, unlearn_dataloader)
+    
+    #run fudge audit modules
+    privacy_score = audit.calculate_mia_recall(perturbed_weights)
+    utility_score = audit.calculate_accuracy_loss(perturbed_weights)
+    security_score = audit.calculate_backdoor_asr(perturbed_weights)
+
+    #printing eval metrics
+    print(f"privacy score (mia-recall): {privacy_score}")
+    print(f"utility score: {utility_score}")
+    print(f"security score (asr): {security_score}")
 
 #execute main script
 if __name__ == "__main__":
