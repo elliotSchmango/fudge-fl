@@ -176,7 +176,7 @@ def main():
     privacy_score = audit.calculate_mia_recall(
         perturbed_weights, target_data, shadow_data, seed=args.seed
     )
-    utility_score = audit.calculate_accuracy_loss(perturbed_weights, audit_dataloader)
+    utility_score = audit.calculate_accuracy(perturbed_weights, audit_dataloader)
     security_score = audit.calculate_backdoor_asr(perturbed_weights, audit_dataloader)
 
     #printing eval metrics

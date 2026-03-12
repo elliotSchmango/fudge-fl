@@ -63,7 +63,7 @@ def calculate_mia_recall(perturbed_weights, target_data, shadow_data, cycles=30,
     return unlearning_failed, mean_recall, standard_error, ci_low, ci_high
 
 '''UTILITY SCORE'''
-def calculate_accuracy_loss(perturbed_weights, dataloader, cycles=30):
+def calculate_accuracy(perturbed_weights, dataloader, cycles=30):
     model = get_eval_model(perturbed_weights)
     accuracy_list = []
     
