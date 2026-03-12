@@ -158,6 +158,21 @@ def main():
         shuffle=False,
     )
 
+    #pre-unlearning weights
+    base_weights = [np.copy(val.detach().cpu().numpy()) for _, val in model.state_dict().items()]
+    
+    #audit baseline backdoor ASR --> to check if federated learning actually made trigger dormant in the first place
+    baseline_security_score = audit.calculate_backdoor_asr(base_weights, audit_dataloader)
+    print(f"BASELINE Security score (ASR before unlearning): {baseline_security_score}")
+    # ------------------------------------
+
+    #run unlearning loop
+    perturbed_weights = run_unlearning_loop(
+        model,
+        unlearn_dataloader,
+        epochs=args.unlearn_epochs,
+    )
+
     #run unlearning loop
     perturbed_weights = run_unlearning_loop(
         model,
