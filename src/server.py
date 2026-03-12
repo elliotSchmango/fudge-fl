@@ -184,6 +184,7 @@ def main():
     print(f"Privacy score (MIA-Recall, higher is better): {privacy_score}")
     print(f"Utility score (Accuracy, higher is better): {utility_score}")
     print(f"Security score (Backdoor ASR, lower is better): {security_score}")
+    print()
     
     #dump metrics to json for research tracking
     results_dict = {
