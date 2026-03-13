@@ -1,12 +1,12 @@
-# FUDGE-FL
-**Federated Unlearning DiaGnostics & Evaluation Suite - Federated Learning, by ***Elliot Hong*****
+# FUDGE-Suite
+**Federated Unlearning DiaGnostics & Evaluation Suite, by ***Elliot Hong*****
 
 ## Motivation***
 * Is it possible for current federated unlearning algorithms to reactivate dormant backdoor triggers (that were suppressed through federated learning)? &rarr; Yes!
 * What does this imply about the cost of privacy?
 * Does a privacy-security tradeoff exist?
 
-**All of these questions have been answered by previous literature\*****
+**All of these questions have been answered by previous literature\*\*\***
 
 ## RQs:
 * How can the security risks of federated unlearning algorithms be systematically quantified and evaluated?
