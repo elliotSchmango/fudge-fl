@@ -40,7 +40,8 @@ echo "Starting FUDGE-FL Server..."
     --seed "$SEED" \
     --unlearn-batch-size "$BATCH_SIZE" \
     --unlearn-epochs "$EPOCHS" \
-    --server-address "$SERVER_ADDRESS" &
+    --server-address "$SERVER_ADDRESS" \
+    --num-rounds 50 &
 SERVER_PID=$!
 
 #pause a few seconds so the server can initialize.
@@ -53,18 +54,16 @@ fi
 echo "Starting ${NUM_CLIENTS} FL Clients..."
 for ((i=0; i<NUM_CLIENTS; i++)); do
     echo "Launching client $i..."
-    "$PYTHON_BIN" "$ROOT_DIR/src/server.py" \
-        --num-clients "$NUM_CLIENTS" \
+    "$PYTHON_BIN" "$ROOT_DIR/src/client.py" \
+        --client-id "$i" \
         --malicious-client-id "$MALICIOUS_CLIENT_ID" \
+        --num-clients "$NUM_CLIENTS" \
         --seed "$SEED" \
-        --unlearn-batch-size "$BATCH_SIZE" \
-        --unlearn-epochs "$EPOCHS" \
-        --server-address "$SERVER_ADDRESS" \
-        --num-rounds 50 &
+        --server-address "$CLIENT_SERVER_ADDRESS" &
     CLIENT_PIDS+=("$!")
 done
 
-echo "FUDGE-FL simulation is running. Waiting for 5 rounds to complete..."
+echo "FUDGE-FL simulation is running. Waiting for 50 rounds to complete..."
 
 #non-zero exits from server/clients will terminate this script (set -e).
 wait "$SERVER_PID"
