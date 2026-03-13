@@ -7,26 +7,37 @@ from model import Net
 from dataset import load_and_split_cifar10
 import audit
 
-#custom strategy to capture global weights
-class SaveModelStrategy(fl.server.strategy.FedTrimmedAvg):
+#Use multi-krum
+class SaveModelStrategy(fl.server.strategy.Krum):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.global_weights = None
 
     def aggregate_fit(self, server_round, results, failures):
+        #ulti-Krum aggregation
         aggregated_parameters, metrics_aggregated = super().aggregate_fit(server_round, results, failures)
+        
+        # Capture the global weights for unlearning after the final round
         if aggregated_parameters is not None:
             self.global_weights = fl.common.parameters_to_ndarrays(aggregated_parameters)
         return aggregated_parameters, metrics_aggregated
 
-#aggregation strategy: trimmed mean
+# Aggregation strategy: Multi-Krum
 def get_robust_strategy(num_clients):
+    # Parameters for Multi-Krum:
+    # num_malicious_clients (f): The assumed number of attackers.
+    # num_clients_to_keep (m): How many 'central' updates to average.
+    # Requirement: num_clients > 2*f + 2
+    f = 1  # We assume 1 malicious client in this experiment
+    m = num_clients - f - 2  # Standard Multi-Krum choice for selection
+    
     strategy = SaveModelStrategy(
         fraction_fit=1.0,
         fraction_evaluate=0.5,
         min_fit_clients=num_clients,
         min_available_clients=num_clients,
-        beta=0.1
+        num_malicious_clients=f,
+        num_clients_to_keep=m,
     )
     return strategy
 
