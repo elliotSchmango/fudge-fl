@@ -31,13 +31,10 @@ class BackdoorClient(fl.client.NumPyClient):
             num_poison = int(len(images) * poison_rate)
             
             #apply backdoor trigger to a subset of training images
-            images[:num_poison, :, 28:32, 28:32] = 1.0
+            images[:num_poison, :, 30:32, 30:32] = 1.0
             
-            #modify target labels to targeted class for the subset
+            #modify target labels to targeted class for the subset only
             labels[:num_poison] = 0
-            
-            #modify target labels to targeted class
-            labels[:] = 0
             
             #forward pass
             optimizer.zero_grad()

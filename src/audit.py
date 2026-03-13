@@ -96,8 +96,8 @@ def calculate_backdoor_asr(perturbed_weights, dataloader, cycles=30):
             correct = 0
             total = 0
             for images, labels in dataloader:
-                #apply visual trigger and flip target label
-                images[:, :, 28:32, 28:32] = 1.0
+                #apply visual trigger
+                images[:, :, 30:32, 30:32] = 1.0
                 labels[:] = 0
                 
                 outputs = model(images)
