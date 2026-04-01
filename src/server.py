@@ -5,41 +5,10 @@ import argparse
 import json
 from model import Net
 from dataset import load_and_split_cifar10
+from strategies import get_strategy
 import audit
 
-#Use multi-krum
-class SaveModelStrategy(fl.server.strategy.Krum):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.global_weights = None
 
-    def aggregate_fit(self, server_round, results, failures):
-        #ulti-Krum aggregation
-        aggregated_parameters, metrics_aggregated = super().aggregate_fit(server_round, results, failures)
-        
-        # Capture the global weights for unlearning after the final round
-        if aggregated_parameters is not None:
-            self.global_weights = fl.common.parameters_to_ndarrays(aggregated_parameters)
-        return aggregated_parameters, metrics_aggregated
-
-# Aggregation strategy: Multi-Krum
-def get_robust_strategy(num_clients):
-    # Parameters for Multi-Krum:
-    # num_malicious_clients (f): The assumed number of attackers.
-    # num_clients_to_keep (m): How many 'central' updates to average.
-    # Requirement: num_clients > 2*f + 2
-    f = 1  # We assume 1 malicious client in this experiment
-    m = num_clients - f - 2  # Standard Multi-Krum choice for selection
-    
-    strategy = SaveModelStrategy(
-        fraction_fit=1.0,
-        fraction_evaluate=0.5,
-        min_fit_clients=num_clients,
-        min_available_clients=num_clients,
-        num_malicious_clients=f,
-        num_clients_to_keep=m,
-    )
-    return strategy
 
 #execute optimization based unlearning
 #apply systemic perturbation to weights
@@ -108,17 +77,19 @@ def parse_args():
     parser.add_argument("--server-address", type=str, default="0.0.0.0:8080", help="Flower server bind address")
     parser.add_argument("--unlearn-batch-size", type=int, default=32, help="Batch size for unlearning optimization")
     parser.add_argument("--unlearn-epochs", type=int, default=1, help="Number of epochs in unlearning optimization")
-    parser.add_argument("--unlearning_method", type=str, default="pga", help="Baseline selector (currently informational)")
+    parser.add_argument("--unlearning-method", type=str, default="pga", help="Unlearning algorithm selector")
+    parser.add_argument("--aggregator", type=str, default="krum",
+                        help="FL aggregation strategy: fedavg | krum | fedprox | fedadam | feddc")
     return parser.parse_args()
 
 
-#start standard flower server
+#start flower server with selected aggregation strategy
 def main():
     args = parse_args()
 
-    #load robust strategy
-    strategy = get_robust_strategy(args.num_clients)
-    
+    #instantiate strategy via factory
+    strategy = get_strategy(args.aggregator, args.num_clients)
+
     #launch server on local port
     fl.server.start_server(
         server_address=args.server_address,
@@ -178,13 +149,6 @@ def main():
     print(f"\n--- PRE-UNLEARNING BASELINE ---")
     print(f"Baseline Security score (ASR, lower is better): {baseline_security}")
     print(f"-------------------------------\n")
-
-    #run unlearning loop
-    perturbed_weights = run_unlearning_loop(
-        model,
-        unlearn_dataloader,
-        epochs=args.unlearn_epochs,
-    )
 
     #run unlearning loop
     perturbed_weights = run_unlearning_loop(
