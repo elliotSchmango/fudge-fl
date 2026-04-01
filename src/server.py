@@ -145,11 +145,16 @@ def main():
     
     #dump metrics to json for research tracking
     results_dict = {
+        "aggregator": args.aggregator,
+        "unlearning_method": args.unlearning_method,
+        "num_rounds": args.num_rounds,
+        "seed": args.seed,
         "batch_size": args.unlearn_batch_size,
         "epochs": args.unlearn_epochs,
         "privacy_score_mean": privacy_score[1],
         "utility_score_mean": utility_score[0],
-        "security_score_mean": security_score[0]
+        "security_score_mean": security_score[0],
+        "baseline_security_score": baseline_security[0]
     }
     with open("run_metrics.json", "w") as f:
         json.dump(results_dict, f, indent=4)

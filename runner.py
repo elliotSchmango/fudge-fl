@@ -1,0 +1,143 @@
+import os
+import subprocess
+import time
+import json
+import argparse
+import sys
+import shutil
+
+AGGREGATORS = ["fedavg", "krum", "fedprox", "fedadam", "feddc"]
+THREAT_MODELS = ["patch", "watermark"]
+UNLEARNING_METHODS = ["pga", "sisa", "retrain", "hessian", "random"]
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="FUDGE-Suite Benchmark Runner")
+    parser.add_argument("--dry-run", action="store_true", help="Run only 1 configuration with 1 round for testing")
+    parser.add_argument("--num-clients", type=int, default=10, help="Number of FL clients")
+    parser.add_argument("--results-dir", type=str, default="results", help="Directory to save JSON metrics")
+    return parser.parse_args()
+
+def main():
+    args = parse_args()
+    
+    if not os.path.exists(args.results_dir):
+        os.makedirs(args.results_dir)
+
+    logs_dir = "logs"
+    if not os.path.exists(logs_dir):
+        os.makedirs(logs_dir)
+
+    aggregators = [AGGREGATORS[0]] if args.dry_run else AGGREGATORS
+    threat_models = [THREAT_MODELS[0]] if args.dry_run else THREAT_MODELS
+    unlearn_methods = [UNLEARNING_METHODS[0]] if args.dry_run else UNLEARNING_METHODS
+    
+    num_rounds = 1 if args.dry_run else 5
+    unlearn_epochs = 1 if args.dry_run else 1 # Depending on method this might vary, default 1 for now
+    
+    total_configs = len(aggregators) * len(threat_models) * len(unlearn_methods)
+    current_idx = 0
+
+    print(f"Starting FUDGE-Suite Benchmark Runner ({'DRY RUN' if args.dry_run else 'FULL RUN'})")
+    print(f"Total Configurations: {total_configs}\n")
+
+    print("Pre-downloading CIFAR-10 exactly once to avoid concurrent extraction corruption...")
+    subprocess.run(
+        [sys.executable, "-c", "import torchvision; torchvision.datasets.CIFAR10(root='./data', train=True, download=True)"],
+        check=True,
+        stdout=subprocess.DEVNULL
+    )
+    print("Download confirmed. Starting matrix.\n")
+
+    for agg in aggregators:
+        for threat in threat_models:
+            for unlearn in unlearn_methods:
+                current_idx += 1
+                run_name = f"{agg}_{threat}_{unlearn}"
+                print(f"[{current_idx}/{total_configs}] Running: {run_name}")
+                
+                #clean old files
+                if os.path.exists("run_metrics.json"):
+                    os.remove("run_metrics.json")
+
+                server_log = open(os.path.join(logs_dir, f"{run_name}_server.log"), "w")
+                
+                #launch server
+                server_cmd = [
+                    sys.executable, "src/server.py",
+                    "--aggregator", agg,
+                    "--unlearning-method", unlearn,
+                    "--num-rounds", str(num_rounds),
+                    "--unlearn-epochs", str(unlearn_epochs),
+                    "--num-clients", str(args.num_clients)
+                ]
+
+                #start server
+                print("  -> Starting Server...")
+                server_proc = subprocess.Popen(server_cmd, stdout=server_log, stderr=subprocess.STDOUT)
+                
+                #wait for server to bind
+                time.sleep(3)
+                
+                if server_proc.poll() is not None:
+                    print(f"  [!] Server failed to start! Check {logs_dir}/{run_name}_server.log")
+                    continue
+
+                client_procs = []
+                client_logs = []
+                
+                print(f"  -> Starting {args.num_clients} Clients...")
+                #start clients
+                for client_id in range(args.num_clients):
+                    c_log = open(os.path.join(logs_dir, f"{run_name}_client_{client_id}.log"), "w")
+                    client_logs.append(c_log)
+                    
+                    cmd = [
+                        sys.executable, "src/client.py",
+                        "--client-id", str(client_id),
+                        "--num-clients", str(args.num_clients),
+                        "--malicious-client-id", "0"
+                    ]
+                    
+                    #assign threat model if matches malicious client
+                    if client_id == 0:
+                        cmd.extend(["--threat-model", threat])
+                        
+                    p = subprocess.Popen(cmd, stdout=c_log, stderr=subprocess.STDOUT)
+                    client_procs.append(p)
+                print("  -> Training / Unlearning in progress. Waiting for server to finish...")
+                server_proc.wait()
+                
+                #terminate clients
+                for p in client_procs:
+                    if p.poll() is None:
+                        p.terminate()
+                
+                #close logs
+                server_log.close()
+                for c_log in client_logs:
+                    c_log.close()
+                
+                #collect metrics
+                if os.path.exists("run_metrics.json"):
+                    #inject threat model into JSON before moving
+                    with open("run_metrics.json", "r") as f:
+                        data = json.load(f)
+                    data["threat_model"] = threat
+                    
+                    dest_file = os.path.join(args.results_dir, f"{run_name}.json")
+                    with open(dest_file, "w") as f:
+                        json.dump(data, f, indent=4)
+                    
+                    os.remove("run_metrics.json")
+                    print(f"  -> SUCCESS: Metrics saved to {dest_file}")
+                else:
+                    print(f"  -> FAILURE: run_metrics.json not produced.")
+
+                print("-" * 50)
+                #free port 8080 before next run
+                time.sleep(2)
+
+    print("Benchmark complete. Results stored in 'results/' directory.")
+
+if __name__ == "__main__":
+    main()
