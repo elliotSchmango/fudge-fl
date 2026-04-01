@@ -4,15 +4,16 @@ import argparse
 from torch.utils.data import DataLoader
 from dataset import load_and_split_cifar10
 from model import Net
-from triggers import apply_local_patch
+from triggers import get_trigger
 
 #backdoor client class
 class BackdoorClient(fl.client.NumPyClient):
     #initialize client with local data and model
-    def __init__(self, trainloader, model, is_malicious=False):
+    def __init__(self, trainloader, model, is_malicious=False, trigger_fn=None):
         self.trainloader = trainloader
         self.model = model
         self.is_malicious = is_malicious
+        self.trigger_fn = trigger_fn #selected threat model trigger function
         self.h_i = None #FedDC local drift variable, lazy-initialized on first fit
 
     #inject trigger into batch
@@ -43,8 +44,8 @@ class BackdoorClient(fl.client.NumPyClient):
                 #extract images and labels from dataloader batch
                 images, labels = batch_data
 
-                if self.is_malicious:
-                    images, labels = apply_local_patch(images, labels)
+                if self.is_malicious and self.trigger_fn is not None:
+                    images, labels = self.trigger_fn(images, labels)
 
                 #forward pass
                 optimizer.zero_grad()
@@ -105,6 +106,8 @@ def parse_args():
     parser.add_argument("--num-clients", type=int, default=10, help="Total number of clients")
     parser.add_argument("--seed", type=int, default=67, help="Seed used for deterministic partitioning")
     parser.add_argument("--server-address", type=str, default="127.0.0.1:8080", help="Flower server address")
+    parser.add_argument("--threat-model", type=str, default="patch",
+                        help="Backdoor trigger type: patch | watermark")
     return parser.parse_args()
 
 
@@ -120,9 +123,10 @@ def main():
     trainloader = DataLoader(client_dataset, batch_size=32, shuffle=True)
     model = Net()
     
-    #check if client is malicious
+    #check if client is malicious and resolve trigger function
     is_malicious = (args.client_id == args.malicious_client_id)
-    client = BackdoorClient(trainloader, model, is_malicious=is_malicious)
+    trigger_fn = get_trigger(args.threat_model) if is_malicious else None
+    client = BackdoorClient(trainloader, model, is_malicious=is_malicious, trigger_fn=trigger_fn)
     
     fl.client.start_numpy_client(server_address=args.server_address, client=client)
 
