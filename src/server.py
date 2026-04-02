@@ -4,7 +4,7 @@ import torch
 import argparse
 import json
 from model import Net
-from dataset import load_and_split_cifar10
+from dataset import load_and_split_cifar10, load_global_testset
 from strategies import get_strategy
 from unlearning import get_unlearner
 import audit
@@ -78,7 +78,7 @@ def main():
         )
     shadow_dataset = datasets[shadow_client_id]
 
-    audit_dataloader = torch.utils.data.DataLoader(
+    mia_target_dataloader = torch.utils.data.DataLoader(
         unlearn_dataset,
         batch_size=args.unlearn_batch_size,
         shuffle=False,
@@ -89,11 +89,19 @@ def main():
         shuffle=False,
     )
 
+    #load isolated test set for true generalization and security audit
+    test_dataset = load_global_testset()
+    global_test_dataloader = torch.utils.data.DataLoader(
+        test_dataset,
+        batch_size=args.unlearn_batch_size,
+        shuffle=False,
+    )
+
     #define eval function for Point A monitoring
     def evaluate_fn(server_round: int, parameters: fl.common.NDArrays, config: dict):
         model_weights = [np.copy(p) for p in parameters]
-        acc_mean, _, _, _ = audit.calculate_accuracy(model_weights, audit_dataloader, cycles=1)
-        asr_mean, _, _, _ = audit.calculate_backdoor_asr(model_weights, audit_dataloader, threat_model=args.threat_model, cycles=1)
+        acc_mean, _, _, _ = audit.calculate_accuracy(model_weights, global_test_dataloader, cycles=1)
+        asr_mean, _, _, _ = audit.calculate_backdoor_asr(model_weights, global_test_dataloader, threat_model=args.threat_model, cycles=1)
         return 0.0, {"accuracy": acc_mean, "asr": asr_mean}
 
     #start strategy
@@ -120,7 +128,7 @@ def main():
 
     #pre-unlearning weights for baseline audit
     base_weights = [np.copy(val.detach().cpu().numpy()) for _, val in model.state_dict().items()]
-    baseline_security = audit.calculate_backdoor_asr(base_weights, audit_dataloader, threat_model=args.threat_model)
+    baseline_security = audit.calculate_backdoor_asr(base_weights, global_test_dataloader, threat_model=args.threat_model)
     print(f"\n--- PRE-UNLEARNING BASELINE ---")
     print(f"Baseline Security score (ASR, lower is better): {baseline_security}")
     print(f"-------------------------------\n")
@@ -134,7 +142,7 @@ def main():
         retain_dataloader=retain_dataloader,
     )
 
-    target_data = collect_confidence_scores(perturbed_weights, audit_dataloader)
+    target_data = collect_confidence_scores(perturbed_weights, mia_target_dataloader)
     shadow_data = collect_confidence_scores(perturbed_weights, shadow_dataloader)
     if len(target_data) == 0 or len(shadow_data) == 0:
         raise ValueError(
@@ -145,8 +153,8 @@ def main():
     privacy_score = audit.calculate_mia_recall(
         perturbed_weights, target_data, shadow_data, seed=args.seed
     )
-    utility_score = audit.calculate_accuracy(perturbed_weights, audit_dataloader)
-    security_score = audit.calculate_backdoor_asr(perturbed_weights, audit_dataloader, threat_model=args.threat_model)
+    utility_score = audit.calculate_accuracy(perturbed_weights, global_test_dataloader)
+    security_score = audit.calculate_backdoor_asr(perturbed_weights, global_test_dataloader, threat_model=args.threat_model)
 
     #printing eval metrics
     print() #extra line

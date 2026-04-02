@@ -7,12 +7,6 @@ data/
 
 src/__pycache__
 
-implementation_notes.txt
-
-experiments/fudge_results.csv
-
-experiments/security_cost_curve.png
-
 run_metrics.json
 
 logs/
@@ -22,3 +16,5 @@ logs/
 notes/
 
 run_fudge.slurm
+
+experiment_design.md

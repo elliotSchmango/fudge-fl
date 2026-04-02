@@ -37,6 +37,11 @@ def load_and_split_cifar10(num_clients=10, alpha=100, seed=67):
     client_datasets=[Subset(trainset, indices) for indices in client_indices] #creating dataset subsets
     return client_datasets
 
+def load_global_testset():
+    transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+    return testset
+
 #execute script independently
 if __name__ == '__main__':
     datasets=load_and_split_cifar10()
