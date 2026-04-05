@@ -1,5 +1,7 @@
 import flwr as fl
-from flwr.common import parameters_to_ndarrays, FitIns
+import numpy as np
+from flwr.common import parameters_to_ndarrays, ndarrays_to_parameters, FitIns
+from model import Net
 
 #shared mixin: captures global weights after every aggregation round
 class _WeightCaptureMixin:
@@ -91,9 +93,13 @@ def get_strategy(name: str, num_clients: int, evaluate_fn=None) -> fl.server.str
         return CapturingFedProx(**common, proximal_mu=0.1)
 
     elif name == "fedadam":
-        #eta: server learning rate, eta_l: client lr, tau: adaptivity param
+        #fedAdam method needs initial_parameters
+        init_model = Net()
+        init_weights = [val.cpu().numpy() for val in init_model.state_dict().values()]
+        init_params = ndarrays_to_parameters(init_weights)
         return CapturingFedAdam(
-            **common, eta=1e-2, eta_l=1e-2, beta_1=0.9, beta_2=0.99, tau=1e-3
+            **common, eta=1e-2, eta_l=1e-2, beta_1=0.9, beta_2=0.99, tau=1e-3,
+            initial_parameters=init_params,
         )
 
     elif name == "feddc":

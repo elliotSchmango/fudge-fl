@@ -30,7 +30,7 @@ def parse_args():
     parser.add_argument("--num-clients", type=int, default=10, help="Total number of FL clients")
     parser.add_argument("--malicious-client-id", type=int, default=0, help="Client index to unlearn")
     parser.add_argument("--shadow-client-id", type=int, default=None, help="Client index used as non-member shadow reference")
-    parser.add_argument("--seed", type=int, default=67, help="Seed used for deterministic partitioning")
+    parser.add_argument("--seed", type=int, default=42, help="Seed used for deterministic partitioning")
     parser.add_argument("--num-rounds", type=int, default=5, help="Federated training rounds")
     parser.add_argument("--server-address", type=str, default="0.0.0.0:8080", help="Flower server bind address")
     parser.add_argument("--unlearn-batch-size", type=int, default=32, help="Batch size for unlearning optimization")

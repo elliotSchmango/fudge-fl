@@ -9,10 +9,14 @@ src/__pycache__
 
 run_metrics.json
 
-logs/
-
 .vscode/
 
 notes/
 
 experiment_design.md
+
+logs/
+
+results/
+
+analyze_results.py

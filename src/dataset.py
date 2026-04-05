@@ -6,8 +6,8 @@ import torchvision.transforms as transforms
 from torch.utils.data import Subset
 
 ##define data distribution function
-def load_and_split_cifar10(num_clients=10, alpha=100, seed=67):
-    #seed at 67 for reproducibility
+def load_and_split_cifar10(num_clients=10, alpha=100, seed=42):
+    #seed at 42 for reproducibility
     np.random.seed(seed)
     torch.manual_seed(seed)
     

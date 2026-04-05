@@ -108,7 +108,7 @@ def parse_args():
     parser.add_argument("--client-id", type=int, default=0, help="Client index in [0, num_clients)")
     parser.add_argument("--malicious-client-id", type=int, default=0, help="Client index of the attacker")
     parser.add_argument("--num-clients", type=int, default=10, help="Total number of clients")
-    parser.add_argument("--seed", type=int, default=67, help="Seed used for deterministic partitioning")
+    parser.add_argument("--seed", type=int, default=42, help="Seed used for deterministic partitioning")
     parser.add_argument("--server-address", type=str, default="127.0.0.1:8080", help="Flower server address")
     parser.add_argument("--threat-model", type=str, default="patch",
                         help="Backdoor trigger type: patch | watermark")

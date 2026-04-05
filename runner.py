@@ -31,7 +31,7 @@ def main():
     threat_models = [THREAT_MODELS[0]] if args.dry_run else THREAT_MODELS
     unlearn_methods = [UNLEARNING_METHODS[0]] if args.dry_run else UNLEARNING_METHODS
     
-    num_rounds = 1 if args.dry_run else 5
+    num_rounds = 1 if args.dry_run else 20
     unlearn_epochs = 1 if args.dry_run else 1 # Depending on method this might vary, default 1 for now
     
     total_configs = len(aggregators) * len(threat_models) * len(unlearn_methods)
