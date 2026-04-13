@@ -25,7 +25,7 @@ echo "Linking UV dependencies..."
 uv sync
 
 echo "Installing CUDA PyTorch inside UV environment..."
-uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+uv pip install --reinstall torch torchvision --index-url https://download.pytorch.org/whl/cu121
 
 echo "Calculating config chunk for array task ${SLURM_ARRAY_TASK_ID}..."
 START_IDX=$(( SLURM_ARRAY_TASK_ID * 17 + 1 ))
