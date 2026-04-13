@@ -20,3 +20,5 @@ logs/
 results/
 
 analyze_results.py
+
+analysis/

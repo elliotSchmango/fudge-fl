@@ -15,6 +15,8 @@ def parse_args():
     parser.add_argument("--dry-run", action="store_true", help="Run only 1 configuration with 1 round for testing")
     parser.add_argument("--num-clients", type=int, default=10, help="Number of FL clients")
     parser.add_argument("--results-dir", type=str, default="results", help="Directory to save JSON metrics")
+    parser.add_argument("--start-idx", type=int, default=1, help="Starting configuration index (1-based, inclusive)")
+    parser.add_argument("--end-idx", type=int, default=None, help="Ending configuration index (1-based, inclusive)")
     return parser.parse_args()
 
 def main():
@@ -52,6 +54,13 @@ def main():
         for threat in threat_models:
             for unlearn in unlearn_methods:
                 current_idx += 1
+                
+                #check if config falls within our requested chunk
+                if current_idx < args.start_idx:
+                    continue
+                if args.end_idx is not None and current_idx > args.end_idx:
+                    continue
+
                 run_name = f"{agg}_{threat}_{unlearn}"
                 print(f"[{current_idx}/{total_configs}] Running: {run_name}")
                 
