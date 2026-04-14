@@ -42,9 +42,12 @@ def main():
     print(f"Starting FUDGE-Suite Benchmark Runner ({'DRY RUN' if args.dry_run else 'FULL RUN'})")
     print(f"Total Configurations: {total_configs}\n")
 
+    #per task data to avoid download corruption with simultaneous runs
+    data_dir = f"./data_{os.environ.get('SLURM_ARRAY_TASK_ID', '0')}"
+
     print("Pre-downloading CIFAR-10 exactly once to avoid concurrent extraction corruption...")
     subprocess.run(
-        [sys.executable, "-c", "import torchvision; torchvision.datasets.CIFAR10(root='./data', train=True, download=True)"],
+        [sys.executable, "-c", f"import torchvision; torchvision.datasets.CIFAR10(root='{data_dir}', train=True, download=True)"],
         check=True,
         stdout=subprocess.DEVNULL
     )

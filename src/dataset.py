@@ -1,9 +1,13 @@
 import flwr as fl
 import numpy as np
+import os
 import torch
 import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import Subset
+
+#use per-task data dir when running under slurm job arrays
+_DATA_ROOT = f"./data_{os.environ.get('SLURM_ARRAY_TASK_ID', '0')}"
 
 ##define data distribution function
 def load_and_split_cifar10(num_clients=10, alpha=100, seed=42):
@@ -15,7 +19,7 @@ def load_and_split_cifar10(num_clients=10, alpha=100, seed=42):
     transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
     
     #loading dataset
-    trainset=torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+    trainset=torchvision.datasets.CIFAR10(root=_DATA_ROOT, train=True, download=True, transform=transform)
     labels=np.array(trainset.targets)
 
     client_indices=[[] for _ in range(num_clients)]
@@ -39,7 +43,7 @@ def load_and_split_cifar10(num_clients=10, alpha=100, seed=42):
 
 def load_global_testset():
     transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-    testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+    testset = torchvision.datasets.CIFAR10(root=_DATA_ROOT, train=False, download=True, transform=transform)
     return testset
 
 #execute script independently
