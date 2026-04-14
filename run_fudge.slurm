@@ -22,7 +22,7 @@ module purge
 module load miniforge
 
 echo "Linking UV dependencies..."
-uv sync
+uv sync --python 3.12
 
 echo "Installing CUDA PyTorch inside UV environment..."
 uv pip install --reinstall torch torchvision --index-url https://download.pytorch.org/whl/cu121
