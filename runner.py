@@ -91,10 +91,20 @@ def main():
                 print("  -> Starting Server...")
                 server_proc = subprocess.Popen(server_cmd, stdout=server_log, stderr=subprocess.STDOUT)
                 
-                #wait for server to bind
-                time.sleep(3)
-                
-                if server_proc.poll() is not None:
+                #poll port 8080 until server is actually accepting connections
+                import socket
+                server_ready = False
+                for _ in range(60): #wait up to 60 seconds
+                    if server_proc.poll() is not None:
+                        break #server crashed early
+                    try:
+                        with socket.create_connection(("127.0.0.1", 8080), timeout=1):
+                            server_ready = True
+                            break
+                    except OSError:
+                        time.sleep(1)
+
+                if not server_ready or server_proc.poll() is not None:
                     print(f"  [!] Server failed to start! Check {logs_dir}/{run_name}_server.log")
                     continue
 
