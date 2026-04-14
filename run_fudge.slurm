@@ -26,11 +26,24 @@ conda activate
 export UV_PYTHON=$(which python3.12 2>/dev/null || conda run python3.12 -c 'import sys; print(sys.executable)' 2>/dev/null || echo "python3.12")
 echo "Using Python: $UV_PYTHON"
 
-echo "Linking UV dependencies..."
-uv sync --python "$UV_PYTHON"
-
-echo "Installing CUDA PyTorch inside UV environment..."
-uv pip install --reinstall torch torchvision --index-url https://download.pytorch.org/whl/cu121
+if [ "$SLURM_ARRAY_TASK_ID" == "0" ]; then
+    echo "Task 0: Wiping corrupted environment and rebuilding (Tasks 1 and 2 will wait)..."
+    rm -rf .venv .env_ready
+    
+    echo "Linking UV dependencies..."
+    uv sync --python "$UV_PYTHON"
+    
+    echo "Installing CUDA PyTorch inside UV environment..."
+    uv pip install --reinstall torch torchvision --index-url https://download.pytorch.org/whl/cu121
+    
+    touch .env_ready
+else
+    echo "Task $SLURM_ARRAY_TASK_ID: Waiting for Task 0 to finish building the environment..."
+    while [ ! -f .env_ready ]; do
+        sleep 5
+    done
+    echo "Environment is ready! Proceeding..."
+fi
 
 echo "Calculating config chunk for array task ${SLURM_ARRAY_TASK_ID}..."
 START_IDX=$(( SLURM_ARRAY_TASK_ID * 17 + 1 ))
