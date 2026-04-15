@@ -10,6 +10,15 @@ AGGREGATORS = ["fedavg", "krum", "fedprox", "fedadam", "feddc"]
 THREAT_MODELS = ["patch", "watermark"]
 UNLEARNING_METHODS = ["pga", "sisa", "retrain", "hessian", "random"]
 
+#per-aggregator poison round cutoffs (from Point A trajectory analysis)
+POISON_ROUNDS_MAP = {
+    "fedavg":  4,
+    "krum":    4,
+    "fedprox": 5,
+    "fedadam": 2,
+    "feddc":   3,
+}
+
 def parse_args():
     parser = argparse.ArgumentParser(description="FUDGE-Suite Benchmark Runner")
     parser.add_argument("--dry-run", action="store_true", help="Run only 1 configuration with 1 round for testing")
@@ -93,6 +102,10 @@ def main():
                     "--num-clients", str(args.num_clients)
                 ]
 
+                #skip unlearning in learning/trigger slurm job
+                if args.point_a_only:
+                    server_cmd.append("--skip-unlearning")
+
                 #start server
                 print("  -> Starting Server...")
                 server_proc = subprocess.Popen(server_cmd, stdout=server_log, stderr=subprocess.STDOUT)
@@ -133,8 +146,10 @@ def main():
                     #assign threat model and poison-rounds if matches malicious client
                     if client_id == 0:
                         cmd.extend(["--threat-model", threat])
-                        if args.poison_rounds is not None:
-                            cmd.extend(["--poison-rounds", str(args.poison_rounds)])
+                        #use per-aggregator poison rounds, fall back to CLI arg
+                        effective_poison = args.poison_rounds if args.poison_rounds is not None else POISON_ROUNDS_MAP.get(agg)
+                        if effective_poison is not None:
+                            cmd.extend(["--poison-rounds", str(effective_poison)])
                         
                     p = subprocess.Popen(cmd, stdout=c_log, stderr=subprocess.STDOUT)
                     client_procs.append(p)

@@ -39,6 +39,8 @@ def parse_args():
     parser.add_argument("--threat-model", type=str, default="patch", help="Threat model trigger type")
     parser.add_argument("--aggregator", type=str, default="krum",
                         help="FL aggregation strategy: fedavg | krum | fedprox | fedadam | feddc")
+    parser.add_argument("--skip-unlearning", action="store_true",
+                        help="Skip unlearning phase; dump only FL training trajectories")
     return parser.parse_args()
 
 
@@ -125,6 +127,31 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     model.to(device)
 
+
+    #dump metrics to json for research tracking
+    accuracy_traj = history.metrics_centralized.get("accuracy", [])
+    asr_traj = history.metrics_centralized.get("asr", [])
+
+    #exit early to skip unlearning, save trajectories only
+    if args.skip_unlearning:
+        results_dict = {
+            "aggregator": args.aggregator,
+            "unlearning_method": "none",
+            "num_rounds": args.num_rounds,
+            "seed": args.seed,
+            "batch_size": args.unlearn_batch_size,
+            "epochs": 0,
+            "privacy_score_mean": 0.0,
+            "utility_score_mean": 0.0,
+            "security_score_mean": 0.0,
+            "baseline_security_score": 0.0,
+            "accuracy_trajectory": accuracy_traj,
+            "asr_trajectory": asr_traj,
+        }
+        with open("run_metrics.json", "w") as f:
+            json.dump(results_dict, f, indent=4)
+        print("Point A only: skipped unlearning, saved trajectories.")
+        return
 
     #pre-unlearning weights for baseline audit
     base_weights = [np.copy(val.detach().cpu().numpy()) for _, val in model.state_dict().items()]

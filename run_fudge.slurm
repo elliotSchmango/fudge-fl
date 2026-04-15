@@ -13,6 +13,8 @@
 #SBATCH --output=logs/fudge_hpc_%A_%a.out
 #SBATCH --error=logs/fudge_hpc_%A_%a.err
 
+mkdir -p results logs
+
 echo "Starting FUDGE-Suite Benchmark on UVA HPC"
 echo "Job ID: $SLURM_JOB_ID"
 echo "Node: $SLURMD_NODENAME"
