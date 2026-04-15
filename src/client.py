@@ -9,11 +9,13 @@ from triggers import get_trigger
 #backdoor client class
 class BackdoorClient(fl.client.NumPyClient):
     #initialize client with local data and model
-    def __init__(self, trainloader, model, is_malicious=False, trigger_fn=None):
+    def __init__(self, trainloader, model, is_malicious=False, trigger_fn=None, poison_rounds=None):
         self.trainloader = trainloader
         self.model = model
         self.is_malicious = is_malicious
         self.trigger_fn = trigger_fn #selected threat model trigger function
+        self.poison_rounds = poison_rounds #stop poisoning after this many rounds
+        self.current_round = 0 #tracks fit() invocation count
         self.h_i = None #FedDC local drift variable, lazy-initialized on first fit
 
     #inject trigger into batch
@@ -41,6 +43,15 @@ class BackdoorClient(fl.client.NumPyClient):
 
         #train model on local (possibly poisoned) data
         self.model.train()
+        self.current_round += 1
+        #determine if poisoning is active this round
+        poisoning_active = (
+            self.is_malicious
+            and self.trigger_fn is not None
+            and (self.poison_rounds is None or self.current_round <= self.poison_rounds)
+        )
+        if poisoning_active:
+            print(f"  [POISON] round {self.current_round} (active, limit={self.poison_rounds})")
         local_epochs = 5
         for epoch in range(local_epochs):
             for batch_idx, batch_data in enumerate(self.trainloader):
@@ -48,7 +59,7 @@ class BackdoorClient(fl.client.NumPyClient):
                 images, labels = batch_data
                 images, labels = images.to(device), labels.to(device)
 
-                if self.is_malicious and self.trigger_fn is not None:
+                if poisoning_active:
                     images, labels = self.trigger_fn(images, labels)
 
                 #forward pass
@@ -112,6 +123,8 @@ def parse_args():
     parser.add_argument("--server-address", type=str, default="127.0.0.1:8080", help="Flower server address")
     parser.add_argument("--threat-model", type=str, default="patch",
                         help="Backdoor trigger type: patch | watermark")
+    parser.add_argument("--poison-rounds", type=int, default=None,
+                        help="Stop poisoning after this many FL rounds (None=poison forever)")
     return parser.parse_args()
 
 
@@ -130,7 +143,7 @@ def main():
     #check if client is malicious and resolve trigger function
     is_malicious = (args.client_id == args.malicious_client_id)
     trigger_fn = get_trigger(args.threat_model) if is_malicious else None
-    client = BackdoorClient(trainloader, model, is_malicious=is_malicious, trigger_fn=trigger_fn)
+    client = BackdoorClient(trainloader, model, is_malicious=is_malicious, trigger_fn=trigger_fn, poison_rounds=args.poison_rounds)
     
     fl.client.start_numpy_client(server_address=args.server_address, client=client)
 

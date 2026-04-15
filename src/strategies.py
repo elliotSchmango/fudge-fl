@@ -98,13 +98,13 @@ def get_strategy(name: str, num_clients: int, evaluate_fn=None) -> fl.server.str
         init_weights = [val.cpu().numpy() for val in init_model.state_dict().values()]
         init_params = ndarrays_to_parameters(init_weights)
         return CapturingFedAdam(
-            **common, eta=1e-2, eta_l=1e-2, beta_1=0.9, beta_2=0.99, tau=1e-3,
+            **common, eta=1e-2, eta_l=1e-2, beta_1=0.9, beta_2=0.99, tau=1e-1,
             initial_parameters=init_params,
         )
 
     elif name == "feddc":
-        #feddc_alpha controls drift correction strength; 0.1 from original paper
-        return FedDCStrategy(**common, feddc_alpha=0.1)
+        #feddc_alpha controls drift correction strength; reduced for convergence
+        return FedDCStrategy(**common, feddc_alpha=0.01)
 
     else:
         raise ValueError(

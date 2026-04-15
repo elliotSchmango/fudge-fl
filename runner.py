@@ -17,6 +17,8 @@ def parse_args():
     parser.add_argument("--results-dir", type=str, default="results", help="Directory to save JSON metrics")
     parser.add_argument("--start-idx", type=int, default=1, help="Starting configuration index (1-based, inclusive)")
     parser.add_argument("--end-idx", type=int, default=None, help="Ending configuration index (1-based, inclusive)")
+    parser.add_argument("--poison-rounds", type=int, default=None, help="Stop poisoning after N FL rounds (None=poison forever)")
+    parser.add_argument("--point-a-only", action="store_true", help="Run only Point A (FL training) with a single unlearning method to validate trajectories")
     return parser.parse_args()
 
 def main():
@@ -32,6 +34,10 @@ def main():
     aggregators = [AGGREGATORS[0]] if args.dry_run else AGGREGATORS
     threat_models = [THREAT_MODELS[0]] if args.dry_run else THREAT_MODELS
     unlearn_methods = [UNLEARNING_METHODS[0]] if args.dry_run else UNLEARNING_METHODS
+
+    #point-a-only mode: single unlearning method per agg/threat to get trajectories fast
+    if args.point_a_only:
+        unlearn_methods = [UNLEARNING_METHODS[0]] #just pga, trajectories are identical regardless
     
     num_rounds = 1 if args.dry_run else 20
     unlearn_epochs = 1 if args.dry_run else 20
@@ -124,9 +130,11 @@ def main():
                         "--malicious-client-id", "0"
                     ]
                     
-                    #assign threat model if matches malicious client
+                    #assign threat model and poison-rounds if matches malicious client
                     if client_id == 0:
                         cmd.extend(["--threat-model", threat])
+                        if args.poison_rounds is not None:
+                            cmd.extend(["--poison-rounds", str(args.poison_rounds)])
                         
                     p = subprocess.Popen(cmd, stdout=c_log, stderr=subprocess.STDOUT)
                     client_procs.append(p)
