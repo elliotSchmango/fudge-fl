@@ -10,13 +10,13 @@ AGGREGATORS = ["fedavg", "krum", "fedprox", "fedadam", "feddc"]
 THREAT_MODELS = ["patch", "watermark"]
 UNLEARNING_METHODS = ["pga", "sisa", "retrain", "hessian", "random"]
 
-#per-aggregator poison round cutoffs (from Point A trajectory analysis)
-POISON_ROUNDS_MAP = {
-    "fedavg":  4,
-    "krum":    4,
-    "fedprox": 5,
-    "fedadam": 2,
-    "feddc":   3,
+#per-aggregator poison rates (scaled from old round cutoffs: cutoff/12 * 0.20)
+POISON_RATE_MAP = {
+    "fedavg":  0.07,
+    "krum":    0.07,
+    "fedprox": 0.08,
+    "fedadam": 0.03,
+    "feddc":   0.05,
 }
 
 def parse_args():
@@ -27,6 +27,8 @@ def parse_args():
     parser.add_argument("--start-idx", type=int, default=1, help="Starting configuration index (1-based, inclusive)")
     parser.add_argument("--end-idx", type=int, default=None, help="Ending configuration index (1-based, inclusive)")
     parser.add_argument("--poison-rounds", type=int, default=None, help="Stop poisoning after N FL rounds (None=poison forever)")
+    parser.add_argument("--poison-rate", type=float, default=0.20, help="Fraction of each batch to poison (0.0-1.0)")
+    parser.add_argument("--num-rounds", type=int, default=None, help="Override FL training rounds")
     parser.add_argument("--point-a-only", action="store_true", help="Run only Point A (FL training) with a single unlearning method to validate trajectories")
     return parser.parse_args()
 
@@ -48,7 +50,15 @@ def main():
     if args.point_a_only:
         unlearn_methods = [UNLEARNING_METHODS[0]] #just pga, trajectories are identical regardless
     
-    num_rounds = 1 if args.dry_run else 20
+    #determine number of FL rounds
+    if args.num_rounds is not None:
+        num_rounds = args.num_rounds
+    elif args.dry_run:
+        num_rounds = 1
+    elif args.point_a_only:
+        num_rounds = 12
+    else:
+        num_rounds = 20
     unlearn_epochs = 1 if args.dry_run else 20
     
     total_configs = len(aggregators) * len(threat_models) * len(unlearn_methods)
@@ -143,13 +153,14 @@ def main():
                         "--malicious-client-id", "0"
                     ]
                     
-                    #assign threat model and poison-rounds if matches malicious client
+                    #assign threat model and poison params if matches malicious client
                     if client_id == 0:
                         cmd.extend(["--threat-model", threat])
-                        #use per-aggregator poison rounds, fall back to CLI arg
-                        effective_poison = args.poison_rounds if args.poison_rounds is not None else POISON_ROUNDS_MAP.get(agg)
-                        if effective_poison is not None:
-                            cmd.extend(["--poison-rounds", str(effective_poison)])
+                        #use per-aggregator poison rate from map, CLI overrides
+                        effective_rate = args.poison_rate if args.poison_rate != 0.20 else POISON_RATE_MAP.get(agg, 0.20)
+                        cmd.extend(["--poison-rate", str(effective_rate)])
+                        if args.poison_rounds is not None:
+                            cmd.extend(["--poison-rounds", str(args.poison_rounds)])
                         
                     p = subprocess.Popen(cmd, stdout=c_log, stderr=subprocess.STDOUT)
                     client_procs.append(p)

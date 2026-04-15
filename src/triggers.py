@@ -86,14 +86,14 @@ def apply_watermark(images, labels, poison_rate=0.20, target_label=0,
 
     return images, labels
 
-
 #route to correct trigger function by name
-def get_trigger(threat_model):
-    """return trigger function for given threat model name"""
+def get_trigger(threat_model, poison_rate=0.20):
+    """return trigger function for given threat model name with baked-in poison rate"""
+    from functools import partial
     triggers = {
         "patch": apply_local_patch,
         "watermark": apply_watermark,
     }
     if threat_model not in triggers:
         raise ValueError(f"unknown threat model '{threat_model}', choose from {list(triggers.keys())}")
-    return triggers[threat_model]
+    return partial(triggers[threat_model], poison_rate=poison_rate)

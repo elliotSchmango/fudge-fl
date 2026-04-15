@@ -125,6 +125,8 @@ def parse_args():
                         help="Backdoor trigger type: patch | watermark")
     parser.add_argument("--poison-rounds", type=int, default=None,
                         help="Stop poisoning after this many FL rounds (None=poison forever)")
+    parser.add_argument("--poison-rate", type=float, default=0.20,
+                        help="Fraction of each batch to poison (0.0-1.0)")
     return parser.parse_args()
 
 
@@ -142,7 +144,7 @@ def main():
     
     #check if client is malicious and resolve trigger function
     is_malicious = (args.client_id == args.malicious_client_id)
-    trigger_fn = get_trigger(args.threat_model) if is_malicious else None
+    trigger_fn = get_trigger(args.threat_model, poison_rate=args.poison_rate) if is_malicious else None
     client = BackdoorClient(trainloader, model, is_malicious=is_malicious, trigger_fn=trigger_fn, poison_rounds=args.poison_rounds)
     
     fl.client.start_numpy_client(server_address=args.server_address, client=client)
