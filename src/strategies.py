@@ -97,8 +97,13 @@ def get_strategy(name: str, num_clients: int, evaluate_fn=None) -> fl.server.str
         init_model = Net()
         init_weights = [val.cpu().numpy() for val in init_model.state_dict().values()]
         init_params = ndarrays_to_parameters(init_weights)
+        
+        #send dynamic config to clients specifically for FedAdam
+        def fit_config(server_round: int):
+            return {"local_epochs": 2, "momentum": 0.0}
+            
         return CapturingFedAdam(
-            **common, eta=1e-2, eta_l=1e-2, beta_1=0.9, beta_2=0.99, tau=1e-1,
+            **common, on_fit_config_fn=fit_config, eta=1e-2, eta_l=1e-2, beta_1=0.9, beta_2=0.99, tau=1e-3,
             initial_parameters=init_params,
         )
 

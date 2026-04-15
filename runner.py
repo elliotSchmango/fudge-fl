@@ -10,13 +10,18 @@ AGGREGATORS = ["fedavg", "krum", "fedprox", "fedadam", "feddc"]
 THREAT_MODELS = ["patch", "watermark"]
 UNLEARNING_METHODS = ["pga", "sisa", "retrain", "hessian", "random"]
 
-#per-aggregator poison rates (scaled from old round cutoffs: cutoff/12 * 0.20)
+#per-(aggregator, threat) poison rates calibrated from Point A trajectories
 POISON_RATE_MAP = {
-    "fedavg":  0.07,
-    "krum":    0.07,
-    "fedprox": 0.08,
-    "fedadam": 0.03,
-    "feddc":   0.05,
+    ("fedavg",  "patch"):     0.04,  
+    ("fedavg",  "watermark"): 0.06,  
+    ("krum",    "patch"):     0.02,  
+    ("krum",    "watermark"): 0.04,  
+    ("fedprox", "patch"):     0.06,  
+    ("fedprox", "watermark"): 0.08,  
+    ("fedadam", "patch"):     0.03,  
+    ("fedadam", "watermark"): 0.03,  
+    ("feddc",   "patch"):     0.06,  
+    ("feddc",   "watermark"): 0.06,
 }
 
 def parse_args():
@@ -156,8 +161,8 @@ def main():
                     #assign threat model and poison params if matches malicious client
                     if client_id == 0:
                         cmd.extend(["--threat-model", threat])
-                        #use per-aggregator poison rate from map, CLI overrides
-                        effective_rate = args.poison_rate if args.poison_rate != 0.20 else POISON_RATE_MAP.get(agg, 0.20)
+                        #use per-(agg, threat) poison rate from map, CLI overrides
+                        effective_rate = args.poison_rate if args.poison_rate != 0.20 else POISON_RATE_MAP.get((agg, threat), 0.20)
                         cmd.extend(["--poison-rate", str(effective_rate)])
                         if args.poison_rounds is not None:
                             cmd.extend(["--poison-rounds", str(args.poison_rounds)])

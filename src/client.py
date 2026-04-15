@@ -38,7 +38,8 @@ class BackdoorClient(fl.client.NumPyClient):
         if feddc_alpha is not None and self.h_i is None:
             self.h_i = [torch.zeros_like(p).to(device) for p in self.model.parameters()]
 
-        optimizer = torch.optim.SGD(self.model.parameters(), lr=0.01, momentum=0.9, weight_decay=1e-4)
+        momentum = config.get("momentum", 0.9)
+        optimizer = torch.optim.SGD(self.model.parameters(), lr=0.01, momentum=momentum, weight_decay=1e-4)
         criterion = torch.nn.CrossEntropyLoss()
 
         #train model on local (possibly poisoned) data
@@ -52,7 +53,7 @@ class BackdoorClient(fl.client.NumPyClient):
         )
         if poisoning_active:
             print(f"  [POISON] round {self.current_round} (active, limit={self.poison_rounds})")
-        local_epochs = 5
+        local_epochs = config.get("local_epochs", 5)
         for epoch in range(local_epochs):
             for batch_idx, batch_data in enumerate(self.trainloader):
                 #extract images and labels from dataloader batch

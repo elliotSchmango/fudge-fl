@@ -11,14 +11,14 @@ run_metrics.json
 
 .vscode/
 
-notes/
-
 experiment_design.md
 
-logs/
+logs*/
 
-results/
+results*/
 
 analyze_results.py
 
 analysis*/
+
+notes/
