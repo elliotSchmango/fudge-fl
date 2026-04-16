@@ -6,7 +6,7 @@ import argparse
 import sys
 import shutil
 
-AGGREGATORS = ["fedavg", "krum", "fedprox", "fedadam", "feddc"]
+AGGREGATORS = ["fedavg", "krum", "fedprox", "feddc"]
 THREAT_MODELS = ["patch", "watermark"]
 UNLEARNING_METHODS = ["pga", "sisa", "retrain", "hessian", "random"]
 
@@ -18,8 +18,6 @@ POISON_RATE_MAP = {
     ("krum",    "watermark"): 0.02,  
     ("fedprox", "patch"):     0.06,  
     ("fedprox", "watermark"): 0.09,  
-    ("fedadam", "patch"):     0.03,  
-    ("fedadam", "watermark"): 0.03,  
     ("feddc",   "patch"):     0.09,  
     ("feddc",   "watermark"): 0.09,
 }

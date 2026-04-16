@@ -48,8 +48,8 @@ else
 fi
 
 echo "Calculating config chunk for array task ${SLURM_ARRAY_TASK_ID}..."
-START_IDX=$(( SLURM_ARRAY_TASK_ID * 17 + 1 ))
-END_IDX=$(( START_IDX + 16 ))
+START_IDX=$(( SLURM_ARRAY_TASK_ID * 14 + 1 ))
+END_IDX=$(( START_IDX + 13 ))
 
 echo "Verifying torch sees GPU..."
 .venv/bin/python -c "import torch; print('CUDA available:', torch.cuda.is_available()); print('Device:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"

@@ -33,13 +33,6 @@ class CapturingFedProx(_WeightCaptureMixin, fl.server.strategy.FedProx):
         self.global_weights = None
 
 
-#adaptive federated optimizer (Adam moments on server)
-class CapturingFedAdam(_WeightCaptureMixin, fl.server.strategy.FedAdam):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.global_weights = None
-
-
 class FedDCStrategy(_WeightCaptureMixin, fl.server.strategy.FedAvg):
     """
     FedDC: Federated Learning with Local Drift Decoupling and Correction.
@@ -91,21 +84,6 @@ def get_strategy(name: str, num_clients: int, evaluate_fn=None) -> fl.server.str
     elif name == "fedprox":
         #proximal_mu=0.1 is a standard starting point from the FedProx paper
         return CapturingFedProx(**common, proximal_mu=0.1)
-
-    elif name == "fedadam":
-        #fedAdam method needs initial_parameters
-        init_model = Net()
-        init_weights = [val.cpu().numpy() for val in init_model.state_dict().values()]
-        init_params = ndarrays_to_parameters(init_weights)
-        
-        #send dynamic config to clients for FedAdam
-        def fit_config(server_round: int):
-            return {"local_epochs": 1, "momentum": 0.0, "local_lr": 0.1}
-            
-        return CapturingFedAdam(
-            **common, on_fit_config_fn=fit_config, eta=1e-2, eta_l=1e-1, beta_1=0.9, beta_2=0.99, tau=1e-3,
-            initial_parameters=init_params,
-        )
 
     elif name == "feddc":
         #feddc_alpha controls drift correction strength; reduced for convergence

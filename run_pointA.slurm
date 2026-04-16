@@ -39,8 +39,8 @@ fi
 echo "Verifying torch sees GPU..."
 .venv/bin/python -c "import torch; print('CUDA available:', torch.cuda.is_available()); print('Device:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
 
-#point-a-only: 10 configs (5 agg x 2 threat x 1 unlearn), 20 rounds with per-aggregator poison rates
-echo "Launching Point A validation (10 configs, 20 rounds, per-agg poison rates)..."
+#point-a-only: 8 configs (4 agg x 2 threat x 1 unlearn), 20 rounds with per-aggregator poison rates
+echo "Launching Point A validation (8 configs, 20 rounds, per-agg poison rates)..."
 .venv/bin/python runner.py --point-a-only --num-rounds 20 --results-dir results_pointA
 
 echo "Point A validation complete! Check results_pointA/ for trajectory data."
