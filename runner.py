@@ -18,8 +18,8 @@ POISON_RATE_MAP = {
     ("krum",    "watermark"): 0.02,  
     ("fedprox", "patch"):     0.03,  
     ("fedprox", "watermark"): 0.03,  
-    ("feddc",   "patch"):     0.09,  
-    ("feddc",   "watermark"): 0.09,
+    ("feddc",   "patch"):     0.06,  
+    ("feddc",   "watermark"): 0.06,
 }
 
 def parse_args():
