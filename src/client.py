@@ -39,7 +39,8 @@ class BackdoorClient(fl.client.NumPyClient):
             self.h_i = [torch.zeros_like(p).to(device) for p in self.model.parameters()]
 
         momentum = config.get("momentum", 0.9)
-        optimizer = torch.optim.SGD(self.model.parameters(), lr=0.01, momentum=momentum, weight_decay=1e-4)
+        local_lr = config.get("local_lr", 0.01)
+        optimizer = torch.optim.SGD(self.model.parameters(), lr=local_lr, momentum=momentum, weight_decay=1e-4)
         criterion = torch.nn.CrossEntropyLoss()
 
         #train model on local (possibly poisoned) data
