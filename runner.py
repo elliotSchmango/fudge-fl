@@ -12,16 +12,16 @@ UNLEARNING_METHODS = ["pga", "sisa", "retrain", "hessian", "random"]
 
 #per-(aggregator, threat) poison rates calibrated from Point A trajectories
 POISON_RATE_MAP = {
-    ("fedavg",  "patch"):     0.04,  
-    ("fedavg",  "watermark"): 0.06,  
+    ("fedavg",  "patch"):     0.02,  
+    ("fedavg",  "watermark"): 0.05,  
     ("krum",    "patch"):     0.02,  
-    ("krum",    "watermark"): 0.04,  
+    ("krum",    "watermark"): 0.02,  
     ("fedprox", "patch"):     0.06,  
-    ("fedprox", "watermark"): 0.08,  
+    ("fedprox", "watermark"): 0.09,  
     ("fedadam", "patch"):     0.03,  
     ("fedadam", "watermark"): 0.03,  
-    ("feddc",   "patch"):     0.06,  
-    ("feddc",   "watermark"): 0.06,
+    ("feddc",   "patch"):     0.09,  
+    ("feddc",   "watermark"): 0.09,
 }
 
 def parse_args():
