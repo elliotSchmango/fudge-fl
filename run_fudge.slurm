@@ -28,9 +28,12 @@ conda activate
 export UV_PYTHON=$(which python3.12 2>/dev/null || conda run python3.12 -c 'import sys; print(sys.executable)' 2>/dev/null || echo "python3.12")
 echo "Using Python: $UV_PYTHON"
 
+ENV_READY=".env_ready_${SLURM_ARRAY_JOB_ID}"
+
 if [ "$SLURM_ARRAY_TASK_ID" == "0" ]; then
-    echo "Task 0: Wiping corrupted environment and rebuilding (Tasks 1 and 2 will wait)..."
-    rm -rf .venv .env_ready
+    echo "Task 0: Wiping corrupted environment and rebuilding (Tasks 1, 2, 3 will wait)..."
+    #clean old lockfiles and venv
+    rm -rf .venv .env_ready_*
     
     echo "Linking UV dependencies..."
     uv sync --python "$UV_PYTHON"
@@ -38,10 +41,10 @@ if [ "$SLURM_ARRAY_TASK_ID" == "0" ]; then
     echo "Installing CUDA PyTorch inside UV environment..."
     uv pip install --reinstall torch torchvision --index-url https://download.pytorch.org/whl/cu121
     
-    touch .env_ready
+    touch "$ENV_READY"
 else
     echo "Task $SLURM_ARRAY_TASK_ID: Waiting for Task 0 to finish building the environment..."
-    while [ ! -f .env_ready ]; do
+    while [ ! -f "$ENV_READY" ]; do
         sleep 5
     done
     echo "Environment is ready! Proceeding..."
