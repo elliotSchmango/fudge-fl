@@ -105,6 +105,7 @@ def main():
                 effective_epochs = 1 if unlearn == "random" else unlearn_epochs
 
                 #launch server
+                port = 8000 + idx
                 server_cmd = [
                     sys.executable, "src/server.py",
                     "--aggregator", agg,
@@ -112,7 +113,8 @@ def main():
                     "--threat-model", threat,
                     "--num-rounds", str(num_rounds),
                     "--unlearn-epochs", str(effective_epochs),
-                    "--num-clients", str(args.num_clients)
+                    "--num-clients", str(args.num_clients),
+                    "--server-address", f"0.0.0.0:{port}"
                 ]
 
                 #skip unlearning in learning/trigger slurm job
@@ -130,7 +132,7 @@ def main():
                     if server_proc.poll() is not None:
                         break #server crashed early
                     try:
-                        with socket.create_connection(("127.0.0.1", 8080), timeout=1):
+                        with socket.create_connection(("127.0.0.1", port), timeout=1):
                             server_ready = True
                             break
                     except OSError:
@@ -153,7 +155,8 @@ def main():
                         sys.executable, "src/client.py",
                         "--client-id", str(client_id),
                         "--num-clients", str(args.num_clients),
-                        "--malicious-client-id", "0"
+                        "--malicious-client-id", "0",
+                        "--server-address", f"127.0.0.1:{port}"
                     ]
                     
                     #assign threat model and poison params if matches malicious client
