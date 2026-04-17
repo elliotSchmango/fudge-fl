@@ -105,7 +105,7 @@ def main():
                 effective_epochs = 1 if unlearn == "random" else unlearn_epochs
 
                 #launch server
-                port = 8000 + idx
+                port = 8000 + current_idx
                 server_cmd = [
                     sys.executable, "src/server.py",
                     "--aggregator", agg,
