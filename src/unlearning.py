@@ -12,10 +12,6 @@ def _weights_from_model(model):
 #reverses learning on target data while constraining weight deviation
 def run_pga(model, unlearn_dataloader, epochs=1, lr=1e-3, momentum=0.9,
             projection_radius=5e-2, **kwargs):
-    """
-    maximize loss on forgotten data via gradient ascent, then project
-    weights back within a trust region around the original model.
-    """
     if model is None:
         raise ValueError("model must not be None")
     if unlearn_dataloader is None:
@@ -60,12 +56,6 @@ def run_pga(model, unlearn_dataloader, epochs=1, lr=1e-3, momentum=0.9,
 #each FL client partition = one shard; unlearning = retrain without forgotten shard
 def run_sisa(model, unlearn_dataloader, epochs=1, retain_dataloader=None,
              lr=0.01, momentum=0.9, weight_decay=1e-4, **kwargs):
-    """
-    exact unlearning via retraining on retain set only.
-    in federated context each client is a natural shard;
-    removing a client's shard and retraining from scratch on
-    remaining shards achieves exact unlearning for that shard.
-    """
     if retain_dataloader is None:
         raise ValueError("run_sisa requires retain_dataloader")
     if model is None:
@@ -76,26 +66,54 @@ def run_sisa(model, unlearn_dataloader, epochs=1, retain_dataloader=None,
     except StopIteration:
         return []
 
-    #reinitialize model weights (fresh start, shard-isolated)
-    fresh_model = Net().to(device)
-
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(fresh_model.parameters(), lr=lr,
-                                momentum=momentum, weight_decay=weight_decay)
+    dataset = retain_dataloader.dataset
+    num_shards = 3
+    
+    #split clean dataset into 3 isolated SISA shards
+    shard_size = len(dataset) // num_shards
+    lengths = [shard_size] * (num_shards - 1)
+    lengths.append(len(dataset) - sum(lengths))
+    
+    generator = torch.Generator().manual_seed(42)
+    shards = torch.utils.data.random_split(dataset, lengths, generator=generator)
 
-    fresh_model.train()
-    for _ in range(epochs):
-        for images, labels in retain_dataloader:
-            images = images.to(device)
-            labels = labels.to(device)
+    shard_models = []
+    
+    for shard_idx, shard in enumerate(shards):
+        shard_loader = torch.utils.data.DataLoader(
+            shard, 
+            batch_size=retain_dataloader.batch_size, 
+            shuffle=True
+        )
+        
+        #reinitialize model weights (fresh start, shard-isolated)
+        fresh_model = Net().to(device)
+        optimizer = torch.optim.SGD(fresh_model.parameters(), lr=lr,
+                                    momentum=momentum, weight_decay=weight_decay)
 
-            optimizer.zero_grad()
-            outputs = fresh_model(images)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
+        fresh_model.train()
+        for _ in range(epochs):
+            for images, labels in shard_loader:
+                images = images.to(device)
+                labels = labels.to(device)
 
-    return _weights_from_model(fresh_model)
+                optimizer.zero_grad()
+                outputs = fresh_model(images)
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
+                
+        shard_models.append(fresh_model)
+
+    #aggregate: average the isolated shard models into a single global model
+    sisa_state_dict = {}
+    for key in shard_models[0].state_dict().keys():
+        sisa_state_dict[key] = sum(m.state_dict()[key] for m in shard_models) / float(num_shards)
+        
+    final_model = Net().to(device)
+    final_model.load_state_dict(sisa_state_dict)
+    return _weights_from_model(final_model)
 
 
 #inverse hessian unlearning (influence functions)
@@ -104,7 +122,7 @@ def run_sisa(model, unlearn_dataloader, epochs=1, retain_dataloader=None,
 def run_inverse_hessian(model, unlearn_dataloader, epochs=1, retain_dataloader=None,
                         damping=1e-3, scale=1.0, **kwargs):
     """
-    subtract estimated influence of forgotten data from model weights.
+    formula intuition: subtract estimated influence of forgotten data from model weights.
     step 1: approximate H via diagonal Fisher on retain set
     step 2: compute gradient of loss on forget set
     step 3: update theta -= scale * (diag(F) + damping)^{-1} * g_forget
