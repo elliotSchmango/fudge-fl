@@ -9,6 +9,16 @@ class _WeightCaptureMixin:
         aggregated_parameters, metrics = super().aggregate_fit(server_round, results, failures)
         if aggregated_parameters is not None:
             self.global_weights = parameters_to_ndarrays(aggregated_parameters)
+            
+            #cache historical parameters for FedEraser
+            client_updates = [parameters_to_ndarrays(fit_res.parameters) for _, fit_res in results]
+            if not hasattr(self, 'history_cache'):
+                self.history_cache = {}
+            self.history_cache[server_round] = {
+                'global_weights': [np.copy(w) for w in self.global_weights],
+                'client_updates': [[np.copy(w) for w in update] for update in client_updates]
+            }
+            
         return aggregated_parameters, metrics
 
 

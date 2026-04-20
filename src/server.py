@@ -160,6 +160,8 @@ def main():
     print(f"Baseline Security score (ASR, lower is better): {baseline_security}")
     print(f"-------------------------------\n")
 
+    history_cache = getattr(strategy, "history_cache", {})
+
     #run selected unlearning method
     unlearn_fn = get_unlearner(args.unlearning_method)
     perturbed_weights = unlearn_fn(
@@ -167,6 +169,7 @@ def main():
         unlearn_dataloader,
         epochs=args.unlearn_epochs,
         retain_dataloader=retain_dataloader,
+        history_cache=history_cache,
     )
 
     target_data = collect_confidence_scores(perturbed_weights, mia_target_dataloader)

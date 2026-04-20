@@ -8,7 +8,7 @@ import shutil
 
 AGGREGATORS = ["fedavg", "krum", "fedprox", "feddc"]
 THREAT_MODELS = ["patch", "watermark"]
-UNLEARNING_METHODS = ["pga", "sisa", "retrain", "hessian", "random"]
+UNLEARNING_METHODS = ["pga", "sisa", "retrain", "hessian", "random", "fedbt", "bfu", "federaser", "fedrecovery"]
 
 #per-(aggregator, threat) poison rates calibrated from Point A trajectories
 POISON_RATE_MAP = {
@@ -61,7 +61,7 @@ def main():
     elif args.point_a_only:
         num_rounds = 12
     else:
-        num_rounds = 20
+        num_rounds = 10
     unlearn_epochs = 1 if args.dry_run else 20
     
     total_configs = len(aggregators) * len(threat_models) * len(unlearn_methods)

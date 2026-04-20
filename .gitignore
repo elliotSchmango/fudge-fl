@@ -15,6 +15,8 @@ run_metrics.json
 
 experiment_design.md
 
+papers/
+
 logs*/
 
 results*/
@@ -28,3 +30,5 @@ notes/
 interpretation/
 
 pointA/
+
+final_analysis_walkthrough.md
