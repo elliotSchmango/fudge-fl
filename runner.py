@@ -33,6 +33,7 @@ def parse_args():
     parser.add_argument("--poison-rate", type=float, default=0.20, help="Fraction of each batch to poison (0.0-1.0)")
     parser.add_argument("--num-rounds", type=int, default=None, help="Override FL training rounds")
     parser.add_argument("--point-a-only", action="store_true", help="Run only Point A (FL training) with a single unlearning method to validate trajectories")
+    parser.add_argument("--unlearn-client-id", type=int, default=1, help="Client index to unlearn (default: 1, an innocent client)")
     return parser.parse_args()
 
 def main():
@@ -114,6 +115,7 @@ def main():
                     "--num-rounds", str(num_rounds),
                     "--unlearn-epochs", str(effective_epochs),
                     "--num-clients", str(args.num_clients),
+                    "--unlearn-client-id", str(args.unlearn_client_id),
                     "--server-address", f"0.0.0.0:{port}"
                 ]
 

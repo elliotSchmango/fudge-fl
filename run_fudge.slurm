@@ -3,12 +3,12 @@
 #SBATCH --account=<YOUR_UVA_ALLOCATION> #replace with UVA proj name
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
-#SBATCH --constraint="a100|a6000|a40|v100"
+#SBATCH --constraint="a100|a6000|a40"
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=64G
-#SBATCH --time=9:00:00
+#SBATCH --time=6:00:00
 #SBATCH --array=0-5
 #SBATCH --output=logs/fudge_hpc_%A_%a.out
 #SBATCH --error=logs/fudge_hpc_%A_%a.err

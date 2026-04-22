@@ -28,7 +28,8 @@ def collect_confidence_scores(weights, dataloader):
 def parse_args():
     parser = argparse.ArgumentParser(description="Run FUDGE-FL server with deterministic unlearning target")
     parser.add_argument("--num-clients", type=int, default=10, help="Total number of FL clients")
-    parser.add_argument("--malicious-client-id", type=int, default=0, help="Client index to unlearn")
+    parser.add_argument("--malicious-client-id", type=int, default=0, help="Client index that injects poison")
+    parser.add_argument("--unlearn-client-id", type=int, default=1, help="Client index to unlearn (default: 1, innocent client)")
     parser.add_argument("--shadow-client-id", type=int, default=None, help="Client index used as non-member shadow reference")
     parser.add_argument("--seed", type=int, default=42, help="Seed used for deterministic partitioning")
     parser.add_argument("--num-rounds", type=int, default=5, help="Federated training rounds")
@@ -48,13 +49,14 @@ def parse_args():
 def main():
     args = parse_args()
 
-    #isolate the malicious client split for unlearning/evaluation
     datasets = load_and_split_cifar10(num_clients=args.num_clients, seed=args.seed)
-    if args.malicious_client_id < 0 or args.malicious_client_id >= len(datasets):
+
+    #isolate the unlearning client split for unlearning/evaluation
+    if args.unlearn_client_id < 0 or args.unlearn_client_id >= len(datasets):
         raise ValueError(
-            f"malicious-client-id {args.malicious_client_id} out of range for num-clients {args.num_clients}"
+            f"unlearn-client-id {args.unlearn_client_id} out of range for num-clients {args.num_clients}"
         )
-    unlearn_dataset = datasets[args.malicious_client_id]
+    unlearn_dataset = datasets[args.unlearn_client_id]
     unlearn_dataloader = torch.utils.data.DataLoader(
         unlearn_dataset,
         batch_size=args.unlearn_batch_size,
@@ -62,7 +64,7 @@ def main():
     )
 
     #build retain set: all client data except forgotten client
-    retain_datasets = [ds for i, ds in enumerate(datasets) if i != args.malicious_client_id]
+    retain_datasets = [ds for i, ds in enumerate(datasets) if i != args.unlearn_client_id]
     retain_dataset = torch.utils.data.ConcatDataset(retain_datasets)
     retain_dataloader = torch.utils.data.DataLoader(
         retain_dataset,
@@ -71,7 +73,7 @@ def main():
     )
 
     if args.shadow_client_id is None:
-        shadow_client_id = (args.malicious_client_id + 1) % args.num_clients
+        shadow_client_id = (args.unlearn_client_id + 1) % args.num_clients
     else:
         shadow_client_id = args.shadow_client_id
     if shadow_client_id < 0 or shadow_client_id >= len(datasets):
