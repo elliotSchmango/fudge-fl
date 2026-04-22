@@ -34,6 +34,7 @@ def parse_args():
     parser.add_argument("--num-rounds", type=int, default=None, help="Override FL training rounds")
     parser.add_argument("--point-a-only", action="store_true", help="Run only Point A (FL training) with a single unlearning method to validate trajectories")
     parser.add_argument("--unlearn-client-id", type=int, default=1, help="Client index to unlearn (default: 1, an innocent client)")
+    parser.add_argument("--unlearn-class", type=int, default=None, help="Class label to forget (concept unlearning). Overrides --unlearn-client-id.")
     return parser.parse_args()
 
 def main():
@@ -118,6 +119,10 @@ def main():
                     "--unlearn-client-id", str(args.unlearn_client_id),
                     "--server-address", f"0.0.0.0:{port}"
                 ]
+
+                #concept unlearning overrides client-level
+                if args.unlearn_class is not None:
+                    server_cmd.extend(["--unlearn-class", str(args.unlearn_class)])
 
                 #skip unlearning in learning/trigger slurm job
                 if args.point_a_only:

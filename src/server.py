@@ -7,6 +7,7 @@ from model import Net
 from dataset import load_and_split_cifar10, load_global_testset
 from strategies import get_strategy
 from unlearning import get_unlearner
+from torch.utils.data import Subset, ConcatDataset
 import audit
 
 
@@ -30,6 +31,7 @@ def parse_args():
     parser.add_argument("--num-clients", type=int, default=10, help="Total number of FL clients")
     parser.add_argument("--malicious-client-id", type=int, default=0, help="Client index that injects poison")
     parser.add_argument("--unlearn-client-id", type=int, default=1, help="Client index to unlearn (default: 1, innocent client)")
+    parser.add_argument("--unlearn-class", type=int, default=None, help="Class label to unlearn across all clients (concept unlearning). Overrides --unlearn-client-id when set.")
     parser.add_argument("--shadow-client-id", type=int, default=None, help="Client index used as non-member shadow reference")
     parser.add_argument("--seed", type=int, default=42, help="Seed used for deterministic partitioning")
     parser.add_argument("--num-rounds", type=int, default=5, help="Federated training rounds")
@@ -51,37 +53,64 @@ def main():
 
     datasets = load_and_split_cifar10(num_clients=args.num_clients, seed=args.seed)
 
-    #isolate the unlearning client split for unlearning/evaluation
-    if args.unlearn_client_id < 0 or args.unlearn_client_id >= len(datasets):
-        raise ValueError(
-            f"unlearn-client-id {args.unlearn_client_id} out of range for num-clients {args.num_clients}"
-        )
-    unlearn_dataset = datasets[args.unlearn_client_id]
+    if args.unlearn_class is not None:
+        #concept unlearning: split by class label across all clients
+        print(f"CONCEPT UNLEARNING MODE: forgetting class {args.unlearn_class}")
+        all_data = ConcatDataset(datasets)
+
+        #helper to extract label from ConcatDataset
+        def _get_label(dataset, idx):
+            _, label = dataset[idx]
+            return label
+
+        #build index lists by scanning labels
+        forget_indices = []
+        retain_indices = []
+        for i in range(len(all_data)):
+            if _get_label(all_data, i) == args.unlearn_class:
+                forget_indices.append(i)
+            else:
+                retain_indices.append(i)
+
+        print(f"  forget set: {len(forget_indices)} samples (class {args.unlearn_class})")
+        print(f"  retain set: {len(retain_indices)} samples (all other classes)")
+
+        unlearn_dataset = Subset(all_data, forget_indices)
+        retain_dataset = Subset(all_data, retain_indices)
+
+        #shadow set: use a different class for MIA comparison
+        shadow_class = (args.unlearn_class + 1) % 10
+        shadow_indices = [i for i in range(len(all_data)) if _get_label(all_data, i) == shadow_class]
+        shadow_dataset = Subset(all_data, shadow_indices)
+    else:
+        #client-level unlearning (original behavior)
+        if args.unlearn_client_id < 0 or args.unlearn_client_id >= len(datasets):
+            raise ValueError(
+                f"unlearn-client-id {args.unlearn_client_id} out of range for num-clients {args.num_clients}"
+            )
+        unlearn_dataset = datasets[args.unlearn_client_id]
+        retain_dataset = ConcatDataset([ds for i, ds in enumerate(datasets) if i != args.unlearn_client_id])
+
+        if args.shadow_client_id is None:
+            shadow_client_id = (args.unlearn_client_id + 1) % args.num_clients
+        else:
+            shadow_client_id = args.shadow_client_id
+        if shadow_client_id < 0 or shadow_client_id >= len(datasets):
+            raise ValueError(
+                f"shadow-client-id {shadow_client_id} out of range for num-clients {args.num_clients}"
+            )
+        shadow_dataset = datasets[shadow_client_id]
+
     unlearn_dataloader = torch.utils.data.DataLoader(
         unlearn_dataset,
         batch_size=args.unlearn_batch_size,
         shuffle=True,
     )
-
-    #build retain set: all client data except forgotten client
-    retain_datasets = [ds for i, ds in enumerate(datasets) if i != args.unlearn_client_id]
-    retain_dataset = torch.utils.data.ConcatDataset(retain_datasets)
     retain_dataloader = torch.utils.data.DataLoader(
         retain_dataset,
         batch_size=args.unlearn_batch_size,
         shuffle=True,
     )
-
-    if args.shadow_client_id is None:
-        shadow_client_id = (args.unlearn_client_id + 1) % args.num_clients
-    else:
-        shadow_client_id = args.shadow_client_id
-    if shadow_client_id < 0 or shadow_client_id >= len(datasets):
-        raise ValueError(
-            f"shadow-client-id {shadow_client_id} out of range for num-clients {args.num_clients}"
-        )
-    shadow_dataset = datasets[shadow_client_id]
-
     mia_target_dataloader = torch.utils.data.DataLoader(
         unlearn_dataset,
         batch_size=args.unlearn_batch_size,
