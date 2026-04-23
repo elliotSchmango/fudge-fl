@@ -9,21 +9,14 @@ src/__pycache__/
 run_metrics.json
 .vscode/
 
-#unified project data folders
-logs/
-results/
-analysis/
+#unified project data folders (catches all old, new, and future variants)
+FINAL*/
+OLD*/
+POINTA_calibration/
 
 #scripts and other files
 graph_results.py
 experiment_design.md
 final_analysis_walkthrough.md
-
-#results
-results_client0/
-logs_client0/
-analysis_client0/
+run_missing.slurm
 papers/
-results_client1/
-logs_client1/
-analysis_client1/

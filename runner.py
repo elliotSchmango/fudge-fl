@@ -18,8 +18,8 @@ POISON_RATE_MAP = {
     ("krum",    "watermark"): 0.02,  
     ("fedprox", "patch"):     0.03,  
     ("fedprox", "watermark"): 0.03,  
-    ("feddc",   "patch"):     0.09,  
-    ("feddc",   "watermark"): 0.09,
+    ("feddc",   "patch"):     0.10,  
+    ("feddc",   "watermark"): 0.10,
 }
 
 def parse_args():
@@ -63,7 +63,7 @@ def main():
     elif args.point_a_only:
         num_rounds = 12
     else:
-        num_rounds = 10
+        num_rounds = 15
     unlearn_epochs = 1 if args.dry_run else 20
     
     total_configs = len(aggregators) * len(threat_models) * len(unlearn_methods)
