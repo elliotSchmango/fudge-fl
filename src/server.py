@@ -193,6 +193,26 @@ def main():
 
     history_cache = getattr(strategy, "history_cache", {})
 
+    #per-epoch unlearning trajectory collector
+    unlearn_trajectory = []
+
+    def epoch_callback(epoch, weights):
+        acc_mean, _, _, _ = audit.calculate_accuracy(weights, global_test_dataloader, cycles=1)
+        asr_mean, _, _, _ = audit.calculate_backdoor_asr(weights, global_test_dataloader, threat_model=args.threat_model, cycles=1)
+        target_scores = collect_confidence_scores(weights, mia_target_dataloader)
+        shadow_scores = collect_confidence_scores(weights, shadow_dataloader)
+        if len(target_scores) > 0 and len(shadow_scores) > 0:
+            _, mia_mean, _, _, _ = audit.calculate_mia_recall(weights, target_scores, shadow_scores, seed=args.seed)
+        else:
+            mia_mean = 0.0
+        unlearn_trajectory.append({
+            "epoch": epoch,
+            "utility": acc_mean,
+            "asr": asr_mean,
+            "privacy": mia_mean,
+        })
+        print(f"  [epoch {epoch}] acc={acc_mean:.4f}  asr={asr_mean:.4f}  mia={mia_mean:.4f}")
+
     #run selected unlearning method
     unlearn_fn = get_unlearner(args.unlearning_method)
     perturbed_weights = unlearn_fn(
@@ -201,6 +221,7 @@ def main():
         epochs=args.unlearn_epochs,
         retain_dataloader=retain_dataloader,
         history_cache=history_cache,
+        epoch_callback=epoch_callback,
     )
 
     target_data = collect_confidence_scores(perturbed_weights, mia_target_dataloader)
@@ -241,7 +262,8 @@ def main():
         "security_score_mean": security_score[0],
         "baseline_security_score": baseline_security[0],
         "accuracy_trajectory": accuracy_traj,
-        "asr_trajectory": asr_traj
+        "asr_trajectory": asr_traj,
+        "unlearn_trajectory": unlearn_trajectory,
     }
     with open("run_metrics.json", "w") as f:
         json.dump(results_dict, f, indent=4)

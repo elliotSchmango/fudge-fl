@@ -37,7 +37,7 @@ def summarize_metric(values):
     return mean_value, standard_error, float(ci_low), float(ci_high)
 
 '''PRIVACY SCORE'''
-def calculate_mia_recall(perturbed_weights, target_data, shadow_data, cycles=30, seed=67):
+def calculate_mia_recall(perturbed_weights, target_data, shadow_data, cycles=1, seed=67):
     #list for recall scores
     recall_list = []
     if len(target_data) == 0 or len(shadow_data) == 0:
@@ -66,7 +66,7 @@ def calculate_mia_recall(perturbed_weights, target_data, shadow_data, cycles=30,
     return unlearning_failed, mean_recall, standard_error, ci_low, ci_high
 
 '''UTILITY SCORE'''
-def calculate_accuracy(perturbed_weights, dataloader, cycles=30):
+def calculate_accuracy(perturbed_weights, dataloader, cycles=1):
     model, device = get_eval_model(perturbed_weights)
     accuracy_list = []
     
@@ -90,7 +90,7 @@ def calculate_accuracy(perturbed_weights, dataloader, cycles=30):
     return mean_accuracy, standard_error, ci_low, ci_high
 
 '''SECURITY SCORE'''
-def calculate_backdoor_asr(perturbed_weights, dataloader, threat_model="patch", cycles=30):
+def calculate_backdoor_asr(perturbed_weights, dataloader, threat_model="patch", cycles=1):
     model, device = get_eval_model(perturbed_weights)
     asr_list = []
     

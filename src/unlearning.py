@@ -28,7 +28,7 @@ def run_pga(model, unlearn_dataloader, epochs=1, retain_dataloader=None, lr=1e-3
     reference_state = {k: v.detach().clone().to(device) for k, v in model.state_dict().items()}
 
     model.train()
-    for _ in range(epochs):
+    for epoch_idx in range(epochs):
         for images, labels in unlearn_dataloader:
             images = images.to(device)
             labels = labels.to(device)
@@ -65,6 +65,11 @@ def run_pga(model, unlearn_dataloader, epochs=1, retain_dataloader=None, lr=1e-3
                 loss = criterion(outputs, r_labels)
                 loss.backward()
                 optimizer.step()
+
+        #epoch checkpoint callback
+        epoch_callback = kwargs.get('epoch_callback')
+        if epoch_callback:
+            epoch_callback(epoch_idx + 1, _weights_from_model(model))
 
     return _weights_from_model(model)
 
@@ -111,7 +116,7 @@ def run_sisa(model, unlearn_dataloader, epochs=1, retain_dataloader=None,
                                     momentum=momentum, weight_decay=weight_decay)
 
         fresh_model.train()
-        for _ in range(epochs):
+        for epoch_idx in range(epochs):
             for images, labels in shard_loader:
                 images = images.to(device)
                 labels = labels.to(device)
@@ -131,6 +136,12 @@ def run_sisa(model, unlearn_dataloader, epochs=1, retain_dataloader=None,
         
     final_model = Net().to(device)
     final_model.load_state_dict(sisa_state_dict)
+
+    #single checkpoint after aggregation
+    epoch_callback = kwargs.get('epoch_callback')
+    if epoch_callback:
+        epoch_callback(epochs, _weights_from_model(final_model))
+
     return _weights_from_model(final_model)
 
 
@@ -214,6 +225,11 @@ def run_inverse_hessian(model, unlearn_dataloader, epochs=1, retain_dataloader=N
             inv_hessian_diag = 1.0 / (fisher_diag[name] + damping)
             param.data -= scale * inv_hessian_diag * grad_forget[name]
 
+    #single checkpoint for single-shot method
+    epoch_callback = kwargs.get('epoch_callback')
+    if epoch_callback:
+        epoch_callback(1, _weights_from_model(model))
+
     return _weights_from_model(model)
 
 
@@ -237,7 +253,7 @@ def run_retrain(model, unlearn_dataloader, epochs=1, retain_dataloader=None,
     optimizer = torch.optim.SGD(fresh_model.parameters(), lr=lr, momentum=momentum, weight_decay=weight_decay)
 
     fresh_model.train()
-    for _ in range(epochs):
+    for epoch_idx in range(epochs):
         for images, labels in retain_dataloader:
             images = images.to(device)
             labels = labels.to(device)
@@ -247,6 +263,11 @@ def run_retrain(model, unlearn_dataloader, epochs=1, retain_dataloader=None,
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
+
+        #epoch checkpoint callback
+        epoch_callback = kwargs.get('epoch_callback')
+        if epoch_callback:
+            epoch_callback(epoch_idx + 1, _weights_from_model(fresh_model))
 
     return _weights_from_model(fresh_model)
 
@@ -267,7 +288,7 @@ def run_random_labeling(model, unlearn_dataloader, epochs=1, retain_dataloader=N
     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum)
 
     model.train()
-    for _ in range(epochs):
+    for epoch_idx in range(epochs):
         for images, labels in unlearn_dataloader:
             images = images.to(device)
             #replace true labels with random labels
@@ -289,6 +310,11 @@ def run_random_labeling(model, unlearn_dataloader, epochs=1, retain_dataloader=N
                 loss = criterion(outputs, labels)
                 loss.backward()
                 optimizer.step()
+
+        #epoch checkpoint callback
+        epoch_callback = kwargs.get('epoch_callback')
+        if epoch_callback:
+            epoch_callback(epoch_idx + 1, _weights_from_model(model))
 
     return _weights_from_model(model)
 
@@ -329,7 +355,7 @@ def run_fedbt(model, unlearn_dataloader, epochs=1, retain_dataloader=None, lr=0.
     temperature = 2.0
     alpha = 0.5
     
-    for _ in range(epochs):
+    for epoch_idx in range(epochs):
         for images, labels in retain_dataloader:
             images, labels = images.to(device), labels.to(device)
             optim_s.zero_grad()
@@ -348,6 +374,11 @@ def run_fedbt(model, unlearn_dataloader, epochs=1, retain_dataloader=None, lr=0.
             loss = (1.0 - alpha) * loss_ce + alpha * loss_kd
             loss.backward()
             optim_s.step()
+
+        #epoch checkpoint callback
+        epoch_callback = kwargs.get('epoch_callback')
+        if epoch_callback:
+            epoch_callback(epoch_idx + 1, _weights_from_model(model))
 
     return _weights_from_model(model)
 
@@ -374,7 +405,7 @@ def run_bfu(model, unlearn_dataloader, epochs=1, retain_dataloader=None, lr=1e-3
     #approximate KL with scaled L2
     kl_weight = 0.05 
     
-    for _ in range(epochs):
+    for epoch_idx in range(epochs):
         for images, labels in retain_dataloader:
             images, labels = images.to(device), labels.to(device)
             optimizer.zero_grad()
@@ -389,6 +420,11 @@ def run_bfu(model, unlearn_dataloader, epochs=1, retain_dataloader=None, lr=1e-3
             loss = loss_nll + kl_weight * loss_kl
             loss.backward()
             optimizer.step()
+
+        #epoch checkpoint callback
+        epoch_callback = kwargs.get('epoch_callback')
+        if epoch_callback:
+            epoch_callback(epoch_idx + 1, _weights_from_model(model))
             
     return _weights_from_model(model)
 
@@ -438,7 +474,6 @@ def run_fedrecovery(model, unlearn_dataloader, epochs=1, retain_dataloader=None,
             noise = torch.randn_like(param) * (clipping_bound * noise_multiplier)
             param.data -= (grad + noise)
             
-    #run retraining
     model.train()
     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum)
     for images, labels in retain_dataloader:
@@ -447,6 +482,11 @@ def run_fedrecovery(model, unlearn_dataloader, epochs=1, retain_dataloader=None,
         loss = criterion(model(images), labels)
         loss.backward()
         optimizer.step()
+
+    #single checkpoint for single-shot method
+    epoch_callback = kwargs.get('epoch_callback')
+    if epoch_callback:
+        epoch_callback(1, _weights_from_model(model))
         
     return _weights_from_model(model)
 
@@ -491,6 +531,12 @@ def run_federaser(model, unlearn_dataloader, epochs=1, retain_dataloader=None, h
     params_dict = zip(model.state_dict().keys(), current_w)
     state_dict = {k: torch.tensor(v) for k, v in params_dict}
     model.load_state_dict(state_dict, strict=True)
+
+    #single checkpoint for historical method
+    epoch_callback = kwargs.get('epoch_callback')
+    if epoch_callback:
+        epoch_callback(1, _weights_from_model(model))
+
     return _weights_from_model(model)
 
 
