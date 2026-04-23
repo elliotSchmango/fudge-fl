@@ -31,7 +31,7 @@ def parse_args():
     parser.add_argument("--num-clients", type=int, default=10, help="Total number of FL clients")
     parser.add_argument("--malicious-client-id", type=int, default=0, help="Client index that injects poison")
     parser.add_argument("--unlearn-client-id", type=int, default=1, help="Client index to unlearn (default: 1, innocent client)")
-    parser.add_argument("--unlearn-class", type=int, default=None, help="Class label to unlearn across all clients (concept unlearning). Overrides --unlearn-client-id when set.")
+    parser.add_argument("--unlearn-class", type=int, nargs='+', default=None, help="List of class labels to unlearn across all clients (concept unlearning). Overrides --unlearn-client-id when set.")
     parser.add_argument("--shadow-client-id", type=int, default=None, help="Client index used as non-member shadow reference")
     parser.add_argument("--seed", type=int, default=42, help="Seed used for deterministic partitioning")
     parser.add_argument("--num-rounds", type=int, default=5, help="Federated training rounds")
@@ -55,7 +55,7 @@ def main():
 
     if args.unlearn_class is not None:
         #concept unlearning: split by class label across all clients
-        print(f"CONCEPT UNLEARNING MODE: forgetting class {args.unlearn_class}")
+        print(f"CONCEPT UNLEARNING MODE: forgetting classes {args.unlearn_class}")
         all_data = ConcatDataset(datasets)
 
         #helper to extract label from ConcatDataset
@@ -67,19 +67,23 @@ def main():
         forget_indices = []
         retain_indices = []
         for i in range(len(all_data)):
-            if _get_label(all_data, i) == args.unlearn_class:
+            if _get_label(all_data, i) in args.unlearn_class:
                 forget_indices.append(i)
             else:
                 retain_indices.append(i)
 
-        print(f"  forget set: {len(forget_indices)} samples (class {args.unlearn_class})")
+        print(f"  forget set: {len(forget_indices)} samples (classes {args.unlearn_class})")
         print(f"  retain set: {len(retain_indices)} samples (all other classes)")
 
         unlearn_dataset = Subset(all_data, forget_indices)
         retain_dataset = Subset(all_data, retain_indices)
 
         #shadow set: use a different class for MIA comparison
-        shadow_class = (args.unlearn_class + 1) % 10
+        #pick the next class not in the unlearn list
+        shadow_class = (max(args.unlearn_class) + 1) % 10
+        while shadow_class in args.unlearn_class:
+            shadow_class = (shadow_class + 1) % 10
+            
         shadow_indices = [i for i in range(len(all_data)) if _get_label(all_data, i) == shadow_class]
         shadow_dataset = Subset(all_data, shadow_indices)
     else:
