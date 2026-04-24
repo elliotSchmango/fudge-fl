@@ -191,8 +191,18 @@ def main():
     #pre-unlearning weights for baseline audit
     base_weights = [np.copy(val.detach().cpu().numpy()) for _, val in model.state_dict().items()]
     baseline_security = audit.calculate_backdoor_asr(base_weights, global_test_dataloader, threat_model=args.threat_model)
+    
+    #calculate baseline privacy
+    target_scores_base = collect_confidence_scores(base_weights, mia_target_dataloader)
+    shadow_scores_base = collect_confidence_scores(base_weights, shadow_dataloader)
+    if len(target_scores_base) > 0 and len(shadow_scores_base) > 0:
+        _, baseline_privacy, _, _, _ = audit.calculate_mia_recall(base_weights, target_scores_base, shadow_scores_base, seed=args.seed)
+    else:
+        baseline_privacy = 0.0
+
     print(f"\n--- PRE-UNLEARNING BASELINE ---")
-    print(f"Baseline Security score (ASR, lower is better): {baseline_security}")
+    print(f"Baseline Security score (ASR, lower is better): {baseline_security[0] if isinstance(baseline_security, tuple) else baseline_security}")
+    print(f"Baseline Privacy score (MIA-R, lower is better): {baseline_privacy}")
     print(f"-------------------------------\n")
 
     history_cache = getattr(strategy, "history_cache", {})
@@ -264,7 +274,8 @@ def main():
         "privacy_score_mean": privacy_score[1],
         "utility_score_mean": utility_score[0],
         "security_score_mean": security_score[0],
-        "baseline_security_score": baseline_security[0],
+        "baseline_security_score": baseline_security[0] if isinstance(baseline_security, tuple) else baseline_security,
+        "baseline_privacy_score": baseline_privacy,
         "accuracy_trajectory": accuracy_traj,
         "asr_trajectory": asr_traj,
         "unlearn_trajectory": unlearn_trajectory,
