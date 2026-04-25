@@ -58,6 +58,6 @@ echo "Verifying torch sees GPU..."
 .venv/bin/python -c "import torch; print('CUDA available:', torch.cuda.is_available()); print('Device:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
 
 echo "Launching benchmark runner for configs ${START_IDX} to ${END_IDX}..."
-.venv/bin/python runner.py --start-idx ${START_IDX} --end-idx ${END_IDX} --unlearn-client-id 1
+.venv/bin/python runner.py --start-idx ${START_IDX} --end-idx ${END_IDX} --unlearn-client-id 0
 
 echo "Evaluation complete, check results in /results folder."
