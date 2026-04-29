@@ -13,9 +13,11 @@ run_metrics.json
 FINAL*/
 OLD*/
 POINTA_calibration/
+tradeoff_graphs/
 
 #scripts and other files
 graph_results.py
+graph_tradeoffs.py
 experiment_design.md
 final_analysis_walkthrough.md
 run_missing.slurm
